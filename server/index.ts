@@ -47,6 +47,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Add health check endpoint BEFORE routes
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -77,19 +82,26 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
-    
+
+    // Check if DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      log("⚠ DATABASE_URL is not set - database operations will not work");
+      log("   Please configure DATABASE_URL in Google Cloud Run environment variables");
+      return; // Skip database-dependent operations
+    }
+
     // Ensure default admin user exists (critical for production deployment)
     setImmediate(async () => {
       try {
         const { storage } = await import("./storage");
         const bcrypt = await import("bcryptjs");
-        
+
         const adminUser = await storage.getUserByUsername("admin");
-        
+
         if (!adminUser) {
           log("Creating default admin user...");
           const hashedPassword = await bcrypt.hash("admin123", 10);
-          
+
           await storage.createUser({
             username: "admin",
             password: hashedPassword,
@@ -98,13 +110,16 @@ app.use((req, res, next) => {
             lastName: "管理員",
             role: "admin",
           });
-          
+
           log("✓ Default admin user created (username: admin, password: admin123)");
           log("⚠ IMPORTANT: Change the admin password immediately after first login!");
+        } else {
+          log("✓ Admin user already exists");
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         log(`⚠ Failed to ensure default admin user: ${errorMessage}`);
+        log(`   Stack: ${error instanceof Error ? error.stack : 'N/A'}`);
         // Server continues to run even if admin creation fails
       }
     });
