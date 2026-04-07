@@ -31,6 +31,12 @@ RUN npm ci --only=production
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy shared directory (contains database schema)
+COPY --from=builder /app/shared ./shared
+
+# Copy client build files
+COPY --from=builder /app/client/dist ./client/dist
+
 # Create uploads directory
 RUN mkdir -p /app/uploads && chmod 755 /app/uploads
 

@@ -27,7 +27,8 @@ steps:
       - '--max-instances=10'
       - '--min-instances=0'
       - '--timeout=300'
-      - '--set-env-vars=NODE_ENV=production'
+      - '--set-env-vars=NODE_ENV=production,PORT=8080'
+      - '--update-secrets=DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest'
 
 # Images to push to Container Registry
 images:
