@@ -10,7 +10,7 @@ async function getDriveClient() {
     // Use Google's default credential lookup
     // This automatically works on Cloud Run with the service account
     const auth = new google.auth.GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/drive.file']
+      scopes: ['https://www.googleapis.com/auth/drive']
     });
     
     driveClient = google.drive({ version: 'v3', auth });
