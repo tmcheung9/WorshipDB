@@ -7,37 +7,18 @@ async function getDriveClient() {
   if (driveClient) return driveClient;
 
   try {
-    let credentials;
-    
-    // Try to get credentials from environment variable
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-      // Check if it's a string that looks like JSON
-      const credsValue = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-      if (credsValue.startsWith('{')) {
-        // It's the actual JSON content
-        credentials = JSON.parse(credsValue);
-        console.log('[Google Drive] ✅ Credentials loaded from env var');
-      } else {
-        // It might be a reference, but for now treat as is
-        console.log('[Google Drive] ⚠ Credentials value doesn\'t look like JSON');
-        throw new Error('Invalid credentials format');
-      }
-    }
-    else {
-      console.error('[Google Drive] ❌ No credentials found');
-      throw new Error('Google Drive not configured: Missing service account credentials');
-    }
-    
+    // Use Google's default credential lookup
+    // This automatically works on Cloud Run with the service account
     const auth = new google.auth.GoogleAuth({
-      credentials,
       scopes: ['https://www.googleapis.com/auth/drive.file']
     });
+    
     driveClient = google.drive({ version: 'v3', auth });
-    console.log('[Google Drive] ✅ Service account client initialized');
+    console.log('[Google Drive] ✅ Client initialized');
     return driveClient;
   } catch (err) {
     console.error('[Google Drive] Failed to initialize:', err);
-    throw new Error('Google Drive not configured: Missing service account credentials');
+    throw new Error('Google Drive not configured');
   }
 }
 
