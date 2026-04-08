@@ -3,47 +3,44 @@ import { Readable } from 'stream';
 
 let driveClient: any = null;
 
-/**
- * Get Google Drive client using Service Account credentials
- * Works on Cloud Run (no Replit dependencies)
- */
 async function getDriveClient() {
   if (driveClient) return driveClient;
 
-  // Check for service account credentials (Cloud Run)
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    try {
-      const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-      const auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: ['https://www.googleapis.com/auth/drive.file']
-      });
-      driveClient = google.drive({ version: 'v3', auth });
-      console.log('[Google Drive] ✅ Service account client initialized');
-      return driveClient;
-    } catch (err) {
-      console.error('[Google Drive] Failed to parse service account credentials:', err);
-      throw new Error('Invalid service account credentials');
+  try {
+    let credentials;
+    
+    // Try to get credentials from environment variable
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      // Check if it's a string that looks like JSON
+      const credsValue = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+      if (credsValue.startsWith('{')) {
+        // It's the actual JSON content
+        credentials = JSON.parse(credsValue);
+        console.log('[Google Drive] ✅ Credentials loaded from env var');
+      } else {
+        // It might be a reference, but for now treat as is
+        console.log('[Google Drive] ⚠ Credentials value doesn\'t look like JSON');
+        throw new Error('Invalid credentials format');
+      }
     }
-  }
-  
-  // Fallback for local development (optional)
-  if (process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_CLIENT_EMAIL) {
-    const auth = new google.auth.JWT({
-      email: process.env.GOOGLE_CLIENT_EMAIL,
-      key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    else {
+      console.error('[Google Drive] ❌ No credentials found');
+      throw new Error('Google Drive not configured: Missing service account credentials');
+    }
+    
+    const auth = new google.auth.GoogleAuth({
+      credentials,
       scopes: ['https://www.googleapis.com/auth/drive.file']
     });
     driveClient = google.drive({ version: 'v3', auth });
-    console.log('[Google Drive] ✅ JWT client initialized');
+    console.log('[Google Drive] ✅ Service account client initialized');
     return driveClient;
+  } catch (err) {
+    console.error('[Google Drive] Failed to initialize:', err);
+    throw new Error('Google Drive not configured: Missing service account credentials');
   }
-  
-  console.error('[Google Drive] ❌ No credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON');
-  throw new Error('Google Drive not configured: Missing service account credentials');
 }
 
-// For backward compatibility - replaces getUncachableGoogleDriveClient
 export async function getUncachableGoogleDriveClient() {
   return getDriveClient();
 }
@@ -63,26 +60,15 @@ export interface DriveFile {
   webContentLink?: string | null;
 }
 
-/**
- * Get the root folder ID - use the user-provided folder
- */
 export async function getOrCreateRootFolder(): Promise<string> {
   const userProvidedFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1qVMCSSVYP0gr-mZPgDS1yEYGhSHWIl97';
-  
   console.log(`[Google Drive] Using root folder: ${userProvidedFolderId}`);
-  console.log(`[Google Drive] Access at: https://drive.google.com/drive/folders/${userProvidedFolderId}`);
-  
   return userProvidedFolderId;
 }
 
-/**
- * List all subfolders in the root folder
- */
 export async function listSubfolders(parentFolderId: string): Promise<DriveFolder[]> {
   try {
-    console.log(`[Google Drive] Listing subfolders in parent: ${parentFolderId}`);
     const drive = await getDriveClient();
-
     const response = await drive.files.list({
       q: `'${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name)',
@@ -90,29 +76,19 @@ export async function listSubfolders(parentFolderId: string): Promise<DriveFolde
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     });
-
-    const folders = (response.data.files || []).map(file => ({
+    return (response.data.files || []).map(file => ({
       id: file.id!,
       name: file.name!,
     }));
-    
-    console.log(`[Google Drive] Found ${folders.length} subfolders`);
-    return folders;
   } catch (error) {
     console.error('[Google Drive] Error listing subfolders:', error);
     return [];
   }
 }
 
-/**
- * List all files in a specific folder
- */
 export async function listFilesInFolder(folderId: string): Promise<DriveFile[]> {
   try {
     const drive = await getDriveClient();
-    
-    console.log(`[Google Drive] Listing files in folder: ${folderId}`);
-
     const response = await drive.files.list({
       q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name, mimeType, size, thumbnailLink, webViewLink, webContentLink)',
@@ -120,9 +96,6 @@ export async function listFilesInFolder(folderId: string): Promise<DriveFile[]> 
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     });
-    
-    console.log(`[Google Drive] Found ${response.data.files?.length || 0} files`);
-
     return (response.data.files || []).map(file => ({
       id: file.id!,
       name: file.name!,
@@ -133,23 +106,18 @@ export async function listFilesInFolder(folderId: string): Promise<DriveFile[]> 
       webContentLink: file.webContentLink ?? undefined,
     }));
   } catch (error) {
-    console.error(`[Google Drive] Error listing files:`, error);
+    console.error('[Google Drive] Error listing files:', error);
     return [];
   }
 }
 
-/**
- * Get file metadata
- */
 export async function getFileMetadata(fileId: string): Promise<DriveFile> {
   const drive = await getDriveClient();
-
   const response = await drive.files.get({
     fileId,
     fields: 'id, name, mimeType, size, thumbnailLink, webViewLink, webContentLink',
     supportsAllDrives: true,
   });
-
   return {
     id: response.data.id!,
     name: response.data.name!,
@@ -161,9 +129,6 @@ export async function getFileMetadata(fileId: string): Promise<DriveFile> {
   };
 }
 
-/**
- * Upload a file to a specific folder
- */
 export async function uploadFile(
   folderId: string,
   fileName: string,
@@ -171,7 +136,6 @@ export async function uploadFile(
   fileBuffer: Buffer
 ): Promise<DriveFile> {
   const drive = await getDriveClient();
-
   const response = await drive.files.create({
     requestBody: {
       name: fileName,
@@ -185,7 +149,6 @@ export async function uploadFile(
     fields: 'id, name, mimeType, size, thumbnailLink, webViewLink, webContentLink',
     supportsAllDrives: true,
   });
-
   return {
     id: response.data.id!,
     name: response.data.name!,
@@ -197,12 +160,8 @@ export async function uploadFile(
   };
 }
 
-/**
- * Create a new subfolder in the root folder
- */
 export async function createSubfolder(parentFolderId: string, folderName: string): Promise<DriveFolder> {
   const drive = await getDriveClient();
-
   const response = await drive.files.create({
     requestBody: {
       name: folderName,
@@ -212,16 +171,12 @@ export async function createSubfolder(parentFolderId: string, folderName: string
     fields: 'id, name',
     supportsAllDrives: true,
   });
-
   return {
     id: response.data.id!,
     name: response.data.name!,
   };
 }
 
-/**
- * Delete a file from Google Drive
- */
 export async function deleteFile(fileId: string): Promise<void> {
   const drive = await getDriveClient();
   await drive.files.delete({ 
