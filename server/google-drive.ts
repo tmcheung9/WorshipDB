@@ -57,13 +57,15 @@ export async function listSubfolders(parentFolderId: string): Promise<DriveFolde
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     });
+    console.log(`[Google Drive] Listed subfolders - found ${response.data.files?.length || 0} folders`);
     return (response.data.files || []).map(file => ({
       id: file.id!,
       name: file.name!,
     }));
   } catch (error) {
-    console.error('[Google Drive] Error listing subfolders:', error);
-    return [];
+    console.error('[Google Drive] Error listing subfolders:', error instanceof Error ? error.message : error);
+    console.error('[Google Drive] Full error:', error);
+    throw error;
   }
 }
 
@@ -77,6 +79,7 @@ export async function listFilesInFolder(folderId: string): Promise<DriveFile[]> 
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     });
+    console.log(`[Google Drive] Listed files in folder - found ${response.data.files?.length || 0} files`);
     return (response.data.files || []).map(file => ({
       id: file.id!,
       name: file.name!,
@@ -87,8 +90,9 @@ export async function listFilesInFolder(folderId: string): Promise<DriveFile[]> 
       webContentLink: file.webContentLink ?? undefined,
     }));
   } catch (error) {
-    console.error('[Google Drive] Error listing files:', error);
-    return [];
+    console.error('[Google Drive] Error listing files:', error instanceof Error ? error.message : error);
+    console.error('[Google Drive] Full error:', error);
+    throw error;
   }
 }
 

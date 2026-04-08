@@ -1007,6 +1007,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Diagnostic endpoint - test Google Drive connection
+  app.get("/api/diagnostic/drive", isAdmin, async (req, res) => {
+    try {
+      const { listSubfolders, getOrCreateRootFolder } = await import("./google-drive");
+
+      console.log("[Diagnostic] Testing Google Drive connection...");
+      const rootFolderId = await getOrCreateRootFolder();
+      console.log(`[Diagnostic] Root folder ID: ${rootFolderId}`);
+
+      const folders = await listSubfolders(rootFolderId);
+      console.log(`[Diagnostic] Successfully listed ${folders.length} folders`);
+
+      return res.json({
+        success: true,
+        message: "Google Drive connection working",
+        rootFolderId,
+        foldersFound: folders.length,
+        folders: folders.map(f => ({ id: f.id, name: f.name })),
+      });
+    } catch (error) {
+      console.error("[Diagnostic] Google Drive connection failed:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return res.status(500).json({
+        success: false,
+        message: "Google Drive connection failed",
+        error: errorMessage,
+        hint: "Check GOOGLE_APPLICATION_CREDENTIALS environment variable and service account permissions",
+      });
+    }
+  });
+
   // Manual sync trigger - any authenticated user can trigger
   app.post("/api/sync/trigger", isAuthenticated, async (req: any, res) => {
     try {
