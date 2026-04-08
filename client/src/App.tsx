@@ -38,13 +38,11 @@ function AppContent() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [location] = useLocation();
 
-  // Fetch sync status
   const { data: syncStatus } = useQuery<any>({
     queryKey: ["/api/sync/status"],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Sync mutation for manual sync
   const syncMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/sync/trigger");
@@ -55,7 +53,6 @@ function AppContent() {
         title: "同步成功",
         description: data.message || "詩歌庫已從 Google Drive 同步完成",
       });
-      // Invalidate all queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/files"] });
@@ -70,7 +67,6 @@ function AppContent() {
     },
   });
 
-  // Update user profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: Partial<User>) => {
       if (!user) throw new Error("Not authenticated");
@@ -132,7 +128,6 @@ function AppContent() {
     await updateProfileMutation.mutateAsync(data);
   };
 
-  // Format user name for display
   const displayUser = user
     ? {
         name: user.firstName && user.lastName
@@ -142,7 +137,6 @@ function AppContent() {
       }
     : undefined;
 
-  // Navigation items with role-based visibility
   const navItems = [
     {
       path: "/",
@@ -171,10 +165,10 @@ function AppContent() {
   ];
 
   const visibleNavItems = navItems.filter(item => {
-    if (!item.requiresAuth) return true; // Public items always visible
-    if (!user) return false; // Auth required but no user
-    if (item.requiresAdmin && user.role !== "admin") return false; // Admin required but user is not admin
-    return true; // User is authenticated and meets role requirements
+    if (!item.requiresAuth) return true;
+    if (!user) return false;
+    if (item.requiresAdmin && user.role !== "admin") return false;
+    return true;
   });
 
   return (
@@ -196,7 +190,6 @@ function AppContent() {
               </h1>
             </div>
 
-            {/* Navigation Icons - only show when not on login page */}
             {location !== "/login" && (
               <nav className="flex items-center gap-1 ml-2">
                 {visibleNavItems.map((item) => (
@@ -228,13 +221,11 @@ function AppContent() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Sync status - only show for authenticated users */}
             {user && syncStatus && syncStatus.lastSuccess && (
               <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
                 <span>上次同步：{new Date(syncStatus.lastSuccess).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             )}
-            {/* Sync button - only show for authenticated users */}
             {user && (
               <Tooltip>
                 <TooltipTrigger asChild>

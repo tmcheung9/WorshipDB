@@ -47,7 +47,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Add health check endpoint BEFORE routes
   app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
@@ -62,19 +61,12 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Google Cloud Run uses port 8080 by default
-  // Replit and other platforms may use different defaults
-  // this serves both the API and the client.
   const port = parseInt(process.env.PORT || '8080', 10);
   server.listen({
     port,
@@ -83,14 +75,12 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
 
-    // Check if DATABASE_URL is set
     if (!process.env.DATABASE_URL) {
       log("⚠ DATABASE_URL is not set - database operations will not work");
       log("   Please configure DATABASE_URL in Google Cloud Run environment variables");
-      return; // Skip database-dependent operations
+      return;
     }
 
-    // Ensure default admin user exists (critical for production deployment)
     setImmediate(async () => {
       try {
         const { storage } = await import("./storage");
@@ -120,12 +110,9 @@ app.use((req, res, next) => {
         const errorMessage = error instanceof Error ? error.message : String(error);
         log(`⚠ Failed to ensure default admin user: ${errorMessage}`);
         log(`   Stack: ${error instanceof Error ? error.stack : 'N/A'}`);
-        // Server continues to run even if admin creation fails
       }
     });
     
-    // Auto-sync from Google Drive in background with reliability tracking
-    // Only sync if credentials are configured
     const hasGoogleDriveCredentials = 
       process.env.REPLIT_CONNECTORS_HOSTNAME && 
       (process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL);
@@ -136,13 +123,12 @@ app.use((req, res, next) => {
       return;
     }
     
-    // Non-blocking background sync with exponential backoff and failure tracking
     setImmediate(async () => {
       try {
         const { storage } = await import("./storage");
         
         log("Starting initial background sync from Google Drive with reliability tracking...");
-        const result = await storage.performSyncWithTracking(false); // isManual = false
+        const result = await storage.performSyncWithTracking(false);
         
         if (result.success) {
           log(`✓ ${result.message}`);
@@ -152,18 +138,16 @@ app.use((req, res, next) => {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         log(`⚠ Background sync error: ${errorMessage}`);
-        // Server continues to run even if sync fails completely
       }
     });
     
-    // Set up periodic auto-sync every 30 minutes
-    const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+    const SYNC_INTERVAL_MS = 30 * 60 * 1000;
     setInterval(async () => {
       try {
         const { storage } = await import("./storage");
         
         log("Starting periodic auto-sync from Google Drive...");
-        const result = await storage.performSyncWithTracking(false); // isManual = false
+        const result = await storage.performSyncWithTracking(false);
         
         if (result.success) {
           log(`✓ Periodic sync: ${result.message}`);
@@ -173,7 +157,6 @@ app.use((req, res, next) => {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         log(`⚠ Periodic sync error: ${errorMessage}`);
-        // Server continues to run even if periodic sync fails
       }
     }, SYNC_INTERVAL_MS);
     
