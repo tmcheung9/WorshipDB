@@ -1,14 +1,69 @@
-import OpenAI from "openai";
-import pLimit from "p-limit";
+const { PredictionServiceClient } = require('@google-cloud/aiplatform').v1;
+const pLimit = require('p-limit');
 
-// Using Replit's AI Integrations - no API key needed, charges to Replit credits
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+// Initialize Vertex AI Prediction client
+const client = new PredictionServiceClient({
+  apiEndpoint: 'us-central1-aiplatform.googleapis.com',
+  project: process.env.GOOGLE_CLOUD_PROJECT || 'crack-walker-269506',
+  location: 'us-central1',
 });
 
-// Rate limiter: 2 concurrent requests to avoid rate limits
+const modelPath = client.modelPath(
+  process.env.GOOGLE_CLOUD_PROJECT || 'crack-walker-269506',
+  'us-central1',
+  'gemini-1.5-flash-001'
+);
+
+// Rate limiter: 2 concurrent requests
 const limit = pLimit(2);
+
+async function callGemini(prompt: string, systemInstruction?: string): Promise<string> {
+  const request = {
+    endpoint: modelPath,
+    instances: [
+      {
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }]
+          }
+        ]
+      }
+    ],
+    parameters: {
+      temperature: 0.2,
+      maxOutputTokens: 2000,
+    }
+  };
+
+  // Add system instruction if provided
+  if (systemInstruction) {
+    request.instances[0].system_instruction = {
+      parts: [{ text: systemInstruction }]
+    };
+  }
+
+  try {
+    const [response] = await client.predict(request);
+    const textResponse = response.predictions?.[0]?.toString() || '{}';
+    
+    // Try to ensure valid JSON
+    try {
+      JSON.parse(textResponse);
+      return textResponse;
+    } catch {
+      // If not valid JSON, try to extract JSON from text
+      const jsonMatch = textResponse.match(/\{.*\}/s);
+      if (jsonMatch) {
+        return jsonMatch[0];
+      }
+      return '{"results": []}';
+    }
+  } catch (error: any) {
+    console.error('[AI] API Error:', error.message);
+    throw error;
+  }
+}
 
 // Helper function to check if error is rate limit
 function isRateLimitError(error: any): boolean {
@@ -17,7 +72,8 @@ function isRateLimitError(error: any): boolean {
     errorMsg.includes("429") ||
     errorMsg.includes("RATELIMIT_EXCEEDED") ||
     errorMsg.toLowerCase().includes("quota") ||
-    errorMsg.toLowerCase().includes("rate limit")
+    errorMsg.toLowerCase().includes("rate limit") ||
+    errorMsg.includes("Resource exhausted")
   );
 }
 
@@ -61,7 +117,6 @@ export async function extractBandFromTitles(
 
   console.log(`[AI Extract Band] Processing ${songs.length} songs...`);
 
-  // Process in batches to reduce API calls
   const batchSize = 10;
   const results: BandExtractionResult[] = [];
 
@@ -71,13 +126,7 @@ export async function extractBandFromTitles(
     const batchResult = await limit(() => withRetry(async () => {
       const songList = batch.map((s, idx) => `${idx + 1}. "${s.title}"`).join("\n");
       
-      // the newest OpenAI model is "gpt-4o-mini" for cost efficiency
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `你是一個專門分析敬拜詩歌的助手。根據歌曲標題，推斷可能的樂團或專輯名稱。
+      const systemInstruction = `你是一個專門分析敬拜詩歌的助手。根據歌曲標題，推斷可能的樂團或專輯名稱。
 
 常見的敬拜樂團包括：
 - SEMM (聖馬田山教會)
@@ -94,23 +143,16 @@ export async function extractBandFromTitles(
 - Immersio
 
 如果無法從標題推斷，返回 null。
-回應格式必須是 JSON 陣列。`
-          },
-          {
-            role: "user",
-            content: `請分析以下歌曲標題，推斷每首歌可能的樂團/專輯名稱：
+回應格式必須是 JSON 物件。`;
+
+      const userPrompt = `請分析以下歌曲標題，推斷每首歌可能的樂團/專輯名稱：
 
 ${songList}
 
 回應格式：
-[{"index": 1, "band": "樂團名" 或 null, "confidence": "high/medium/low"}]`
-          }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1000
-      });
+{"results": [{"index": 1, "band": "樂團名" 或 null, "confidence": "high/medium/low"}]}`;
 
-      const content = response.choices[0]?.message?.content || "{}";
+      const content = await callGemini(userPrompt, systemInstruction);
       console.log("[AI] Raw response:", content);
       
       let parsed: any;
@@ -126,16 +168,8 @@ ${songList}
         }));
       }
 
-      console.log("[AI] Parsed response keys:", Object.keys(parsed));
-      
-      // Try different possible response structures (AI may use 'result' singular or 'results' plural)
-      const items = parsed.results || parsed.result || parsed.data || parsed.songs || parsed.analysis || parsed || [];
+      const items = parsed.results || parsed.result || parsed.data || parsed.songs || parsed.analysis || [];
       const itemArray = Array.isArray(items) ? items : [];
-      
-      console.log("[AI] Extracted items count:", itemArray.length);
-      if (itemArray.length > 0) {
-        console.log("[AI] First item:", JSON.stringify(itemArray[0]));
-      }
 
       return batch.map((song, idx) => {
         const match = itemArray.find((item: any) => item.index === idx + 1);
@@ -162,7 +196,6 @@ export async function generateTagsForSongs(
 
   console.log(`[AI Generate Tags] Processing ${songs.length} songs...`);
 
-  // Process in batches
   const batchSize = 10;
   const results: TagExtractionResult[] = [];
 
@@ -175,12 +208,7 @@ export async function generateTagsForSongs(
         return `${idx + 1}. "${s.title}"${bandInfo}`;
       }).join("\n");
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `你是一個專門分析敬拜詩歌的助手。根據歌曲標題和樂團，為每首歌生成最多3個分類標籤。
+      const systemInstruction = `你是一個專門分析敬拜詩歌的助手。根據歌曲標題和樂團，為每首歌生成最多3個分類標籤。
 
 【重要】只使用以下類別的標籤，不要創造新標籤：
 
@@ -189,29 +217,18 @@ export async function generateTagsForSongs(
 功能/場合類：開場、回應、結束、聖餐、洗禮、差遣、宣告、默想
 節期類：聖誕、復活節、受難節
 
-【禁止使用】：
-- 語言相關標籤（如粵語、國語、英語）- 無法從歌名判斷
-- 新舊風格標籤（如現代、傳統）- 主觀且不相關
-- 音樂風格標籤（如流行、搖滾）
-
 每首歌選擇1-3個最相關的標籤。
-回應格式必須是 JSON。`
-          },
-          {
-            role: "user",
-            content: `請為以下歌曲生成標籤（每首最多3個）：
+回應格式必須是 JSON 物件。`;
+
+      const userPrompt = `請為以下歌曲生成標籤（每首最多3個）：
 
 ${songList}
 
 回應格式：
-{"results": [{"index": 1, "tags": ["標籤1", "標籤2"]}]}`
-          }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1500
-      });
+{"results": [{"index": 1, "tags": ["標籤1", "標籤2"]}]}`;
 
-      const content = response.choices[0]?.message?.content || "{}";
+      const content = await callGemini(userPrompt, systemInstruction);
+      
       let parsed: any;
       try {
         parsed = JSON.parse(content);
@@ -224,7 +241,6 @@ ${songList}
         }));
       }
 
-      // Try different possible response structures (AI may use 'result' singular or 'results' plural)
       const items = parsed.results || parsed.result || parsed.data || parsed || [];
       const itemArray = Array.isArray(items) ? items : [];
 
