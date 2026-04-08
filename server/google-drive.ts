@@ -7,17 +7,26 @@ async function getDriveClient() {
   if (driveClient) return driveClient;
 
   try {
-    // Use Google's default credential lookup
+    // Use Google's default credential lookup with full Drive scope
     // This automatically works on Cloud Run with the service account
+    // Using full drive scope to access shared folders and all files
     const auth = new google.auth.GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/drive.file']
+      scopes: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/drive.file'
+      ]
     });
-    
-    driveClient = google.drive({ version: 'v3', auth });
-    console.log('[Google Drive] ✅ Client initialized');
+
+    const authClient = await auth.getClient();
+    driveClient = google.drive({ version: 'v3', auth: authClient });
+
+    console.log('[Google Drive] ✅ Client initialized with service account');
+    console.log('[Google Drive] Scopes: drive, drive.file');
+
     return driveClient;
   } catch (err) {
     console.error('[Google Drive] Failed to initialize:', err);
+    console.error('[Google Drive] Error details:', err instanceof Error ? err.stack : err);
     throw new Error('Google Drive not configured');
   }
 }
