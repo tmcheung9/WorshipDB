@@ -244,11 +244,16 @@ export class DbStorage implements IStorage {
       const orphanedCategories = syncedCategories.filter((c: Category) => !driveFolderIds.has(c.driveId!));
       const accessibleCategories = syncedCategories.filter((c: Category) => driveFolderIds.has(c.driveId!));
       
-      // SAFEGUARD: Only process orphan detection if Drive returned at least one folder
-      // This prevents mass orphan marking during transient API failures or auth issues
+      // SAFEGUARD: If Drive returns 0 folders but we have synced categories, this indicates a connection issue
       if (driveFolders.length === 0 && syncedCategories.length > 0) {
-        console.log(`[Category Sync] ⚠️ Skipping orphan detection - Drive returned 0 folders but we have ${syncedCategories.length} synced categories`);
-        console.log(`[Category Sync] ⚠️ This may indicate an API failure or OAuth scope issue - not marking any categories as orphaned`);
+        console.error(`[Category Sync] ❌ Drive returned 0 folders but we have ${syncedCategories.length} synced categories`);
+        throw new Error(
+          `Google Drive sync failed: Expected to find folders but got 0 results. ` +
+          `This indicates a connection issue, authentication failure, or missing permissions. ` +
+          `Please check: (1) GOOGLE_APPLICATION_CREDENTIALS is set correctly, ` +
+          `(2) Service account has access to the drive folders, ` +
+          `(3) DRIVE_ROOT_FOLDER_ID is valid.`
+        );
       } else {
         // Mark orphaned categories (Drive folder not accessible)
         if (orphanedCategories.length > 0) {
@@ -355,8 +360,8 @@ export class DbStorage implements IStorage {
       return allCategories;
     } catch (error) {
       console.error("[Category Sync] Error syncing categories from Drive:", error);
-      // Return existing categories if sync fails
-      return await db.select().from(categories);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to sync categories from Google Drive: ${errorMessage}`);
     }
   }
 
