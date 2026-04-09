@@ -17,6 +17,7 @@ interface CachedFile {
   size: number;
   modifiedTime: string; // Store modifiedTime for consistent ETag generation
 }
+import { generateTagsForSongs } from "./services/ai-extraction";
 
 class FileCache {
   private cache = new Map<string, CachedFile>();
@@ -1163,7 +1164,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[Admin AI] Starting AI-powered tag generation");
       
       // Import AI extraction service
-      const { generateTagsForSongs } = await import("./services/ai-extraction");
       
       // Get all songs
       const allSongs = await storage.getAllSongs();
