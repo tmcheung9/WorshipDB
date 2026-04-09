@@ -1,14 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as pLimitModule from "p-limit";
-const pLimit = pLimitModule.default || pLimitModule;
 
 if (!process.env.GEMINI_API_KEY) {
   console.warn("[AI] GEMINI_API_KEY not set. AI features will be disabled.");
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
-const limit = pLimit(2);
 
 function isRateLimitError(error: any): boolean {
   const errorMsg = error?.message || String(error);
@@ -76,11 +72,10 @@ export async function extractBandFromTitles(
   for (let i = 0; i < songs.length; i += batchSize) {
     const batch = songs.slice(i, i + batchSize);
 
-    const batchResult = await limit(() =>
-      withRetry(async () => {
-        const songList = batch.map((s, idx) => `${idx + 1}. "${s.title}"`).join("\n");
+    const batchResult = await withRetry(async () => {
+      const songList = batch.map((s, idx) => `${idx + 1}. "${s.title}"`).join("\n");
 
-        const prompt = `你是一個專門分析敬拜詩歌的助手。根據歌曲標題，推斷可能的樂團或專輯名稱。
+      const prompt = `你是一個專門分析敬拜詩歌的助手。根據歌曲標題，推斷可能的樂團或專輯名稱。
 
 常見的敬拜樂團包括：
 - SEMM (聖馬田山教會)
@@ -105,41 +100,40 @@ ${songList}
 必須以純 JSON 回應，格式如下（不要包含 markdown 或代碼塊）：
 {"results": [{"index": 1, "band": "樂團名或null", "confidence": "high/medium/low"}]}`;
 
-        const result = await model.generateContent(prompt);
-        const content = result.response.text().trim();
-        console.log("[AI] Raw response:", content);
+      const result = await model.generateContent(prompt);
+      const content = result.response.text().trim();
+      console.log("[AI] Raw response:", content);
 
-        const jsonStr = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      const jsonStr = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
-        let parsed: any;
-        try {
-          parsed = JSON.parse(jsonStr);
-        } catch {
-          console.error("[AI] Failed to parse response:", content);
-          return batch.map((s) => ({
-            songId: s.id,
-            title: s.title,
-            inferredBand: null,
-            confidence: "error",
-          }));
-        }
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch {
+        console.error("[AI] Failed to parse response:", content);
+        return batch.map((s) => ({
+          songId: s.id,
+          title: s.title,
+          inferredBand: null,
+          confidence: "error",
+        }));
+      }
 
-        const items = parsed.results || parsed.result || parsed.data || parsed || [];
-        const itemArray = Array.isArray(items) ? items : [];
+      const items = parsed.results || parsed.result || parsed.data || parsed || [];
+      const itemArray = Array.isArray(items) ? items : [];
 
-        console.log("[AI] Extracted items count:", itemArray.length);
+      console.log("[AI] Extracted items count:", itemArray.length);
 
-        return batch.map((song, idx) => {
-          const match = itemArray.find((item: any) => item.index === idx + 1);
-          return {
-            songId: song.id,
-            title: song.title,
-            inferredBand: match?.band && match.band !== "null" ? match.band : null,
-            confidence: match?.confidence || "unknown",
-          };
-        });
-      })
-    );
+      return batch.map((song, idx) => {
+        const match = itemArray.find((item: any) => item.index === idx + 1);
+        return {
+          songId: song.id,
+          title: song.title,
+          inferredBand: match?.band && match.band !== "null" ? match.band : null,
+          confidence: match?.confidence || "unknown",
+        };
+      });
+    });
 
     results.push(...batchResult);
     console.log(
@@ -173,16 +167,15 @@ export async function generateTagsForSongs(
   for (let i = 0; i < songs.length; i += batchSize) {
     const batch = songs.slice(i, i + batchSize);
 
-    const batchResult = await limit(() =>
-      withRetry(async () => {
-        const songList = batch
-          .map((s, idx) => {
-            const bandInfo = s.bandAlbum ? ` (${s.bandAlbum})` : "";
-            return `${idx + 1}. "${s.title}"${bandInfo}`;
-          })
-          .join("\n");
+    const batchResult = await withRetry(async () => {
+      const songList = batch
+        .map((s, idx) => {
+          const bandInfo = s.bandAlbum ? ` (${s.bandAlbum})` : "";
+          return `${idx + 1}. "${s.title}"${bandInfo}`;
+        })
+        .join("\n");
 
-        const prompt = `你是一個專門分析敬拜詩歌的助手。根據歌曲標題和樂團，為每首歌生成最多3個分類標籤。
+      const prompt = `你是一個專門分析敬拜詩歌的助手。根據歌曲標題和樂團，為每首歌生成最多3個分類標籤。
 
 【重要】只使用以下類別的標籤，不要創造新標籤：
 
@@ -205,37 +198,36 @@ ${songList}
 必須以純 JSON 回應，格式如下（不要包含 markdown 或代碼塊）：
 {"results": [{"index": 1, "tags": ["標籤1", "標籤2"]}]}`;
 
-        const result = await model.generateContent(prompt);
-        const content = result.response.text().trim();
+      const result = await model.generateContent(prompt);
+      const content = result.response.text().trim();
 
-        const jsonStr = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      const jsonStr = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
-        let parsed: any;
-        try {
-          parsed = JSON.parse(jsonStr);
-        } catch {
-          console.error("[AI] Failed to parse response:", content);
-          return batch.map((s) => ({
-            songId: s.id,
-            title: s.title,
-            tags: [],
-          }));
-        }
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch {
+        console.error("[AI] Failed to parse response:", content);
+        return batch.map((s) => ({
+          songId: s.id,
+          title: s.title,
+          tags: [],
+        }));
+      }
 
-        const items = parsed.results || parsed.result || parsed.data || parsed || [];
-        const itemArray = Array.isArray(items) ? items : [];
+      const items = parsed.results || parsed.result || parsed.data || parsed || [];
+      const itemArray = Array.isArray(items) ? items : [];
 
-        return batch.map((song, idx) => {
-          const match = itemArray.find((item: any) => item.index === idx + 1);
-          const tags = match?.tags || [];
-          return {
-            songId: song.id,
-            title: song.title,
-            tags: Array.isArray(tags) ? tags.slice(0, 3) : [],
-          };
-        });
-      })
-    );
+      return batch.map((song, idx) => {
+        const match = itemArray.find((item: any) => item.index === idx + 1);
+        const tags = match?.tags || [];
+        return {
+          songId: song.id,
+          title: song.title,
+          tags: Array.isArray(tags) ? tags.slice(0, 3) : [],
+        };
+      });
+    });
 
     results.push(...batchResult);
     console.log(
