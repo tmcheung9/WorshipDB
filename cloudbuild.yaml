@@ -1,14 +1,12 @@
-# Google Cloud Build configuration
-# This file defines the build steps for deploying to Cloud Run
-
+# Google Cloud Build configuration for worshipdb1
 steps:
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/songbook-app:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/worshipdb1:$COMMIT_SHA', '.']
 
-  # Push the Docker image to Google Container Registry
+  # Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/songbook-app:$COMMIT_SHA']
+    args: ['push', 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/worshipdb1:$COMMIT_SHA']
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -16,28 +14,17 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'songbook-app'
-      - '--image=gcr.io/$PROJECT_ID/songbook-app:$COMMIT_SHA'
-      - '--region=us-central1'
+      - 'worshipdb1'
+      - '--image=us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/worshipdb1:$COMMIT_SHA'
+      - '--region=us-west1'
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=8080'
       - '--memory=512Mi'
       - '--cpu=1'
-      - '--max-instances=10'
-      - '--min-instances=0'
-      - '--timeout=300'
-      - '--set-env-vars=NODE_ENV=production,PORT=8080'
-      - '--update-secrets=DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest'
+      - '--set-env-vars=NODE_ENV=production,PORT=8080,GEMINI_API_KEY=AIzaSyCZccuQAndpd-bHmBUXcLSGnXc9XfWOQT8'
 
-# Images to push to Container Registry
 images:
-  - 'gcr.io/$PROJECT_ID/songbook-app:$COMMIT_SHA'
+  - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/worshipdb1:$COMMIT_SHA'
 
-# Build timeout
 timeout: '1200s'
-
-# Options
-options:
-  machineType: 'N1_HIGHCPU_8'
-  logging: CLOUD_LOGGING_ONLY
