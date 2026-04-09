@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import pLimit from "p-limit";
+import * as pLimitModule from "p-limit";
+const pLimit = pLimitModule.default || pLimitModule;
 
 if (!process.env.GEMINI_API_KEY) {
   console.warn("[AI] GEMINI_API_KEY not set. AI features will be disabled.");
