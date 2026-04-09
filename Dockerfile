@@ -1,20 +1,23 @@
-# Build stage
-FROM node:20-alpine AS builder
+FROM node:20-slim
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm ci
+
+# Install dependencies with legacy peer deps
+RUN npm install --legacy-peer-deps
+
+# Copy the rest of the application
 COPY . .
+
+# Build the application
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY --from=builder /app/dist ./dist
-RUN mkdir -p /app/uploads && chmod 755 /app/uploads
-EXPOSE 8080
+# Set production environment
 ENV NODE_ENV=production
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-CMD ["node", "dist/index.js"]
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["npm", "start"]
