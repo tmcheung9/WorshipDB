@@ -18,6 +18,7 @@ import UploadPage from "@/pages/UploadPage";
 import AdminPage from "@/pages/AdminPage";
 import LoginPage from "@/pages/LoginPage";
 import NotFound from "@/pages/not-found";
+import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import type { User } from "@shared/schema";
 
 function Router() {
@@ -25,8 +26,16 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/login" component={LoginPage} />
-      <Route path="/upload" component={UploadPage} />
-      <Route path="/admin" component={AdminPage} />
+      <Route path="/upload">
+        <ProtectedRoute>
+          <UploadPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin">
+        <AdminRoute>
+          <AdminPage />
+        </AdminRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

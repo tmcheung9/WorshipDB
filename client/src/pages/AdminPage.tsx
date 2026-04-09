@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Music, Users, Upload, Database, Plus, LogIn, RefreshCw, AlertTriangle, CheckCircle2, Clock, FolderOpen, Sparkles, Tags, Search, X } from "lucide-react";
+import { Music, Users, Upload, Database, Plus, RefreshCw, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Clock, FolderOpen, Sparkles, Tags, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -37,7 +37,6 @@ export default function AdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
 
-  // Fetch songs, categories, and files
   const { data: songs = [] } = useQuery<Song[]>({
     queryKey: ["/api/songs"],
   });
@@ -55,13 +54,11 @@ export default function AdminPage() {
     retry: false,
   });
 
-  // Fetch sync status for monitoring
   const { data: syncStatus } = useQuery<any>({
     queryKey: ["/api/sync/status"],
-    refetchInterval: 30000, // Refetch every 30 seconds to monitor sync state
+    refetchInterval: 30000,
   });
 
-  // Google Drive sync mutation with tracking
   const syncMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/sync/trigger", {});
@@ -87,7 +84,6 @@ export default function AdminPage() {
     },
   });
 
-  // Extract band/album mutation (admin function - pattern matching, FREE)
   const extractBandAlbumMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/admin/songs/extract-band-album", {});
@@ -109,7 +105,6 @@ export default function AdminPage() {
     },
   });
 
-  // AI-powered tag generation mutation (uses Replit credits)
   const aiGenerateTagsMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/admin/songs/ai-generate-tags", {});
@@ -131,7 +126,6 @@ export default function AdminPage() {
     },
   });
 
-  // Build song data with category names and file counts
   const songData = useMemo<SongData[]>(() => {
     const categoryMap = new Map(categories.map(c => [c.id, c.name]));
     const fileCountMap = new Map<string, number>();
@@ -147,7 +141,6 @@ export default function AdminPage() {
     }));
   }, [songs, categories, files]);
 
-  // Filter songs based on admin search
   const filteredSongData = useMemo(() => {
     if (!adminSongSearch.trim()) return songData;
     const searchLower = adminSongSearch.toLowerCase().trim();
@@ -159,7 +152,6 @@ export default function AdminPage() {
     );
   }, [songData, adminSongSearch]);
 
-  // Sort songs
   const sortedSongData = useMemo(() => {
     const sorted = [...filteredSongData].sort((a, b) => {
       let comparison = 0;
@@ -187,13 +179,11 @@ export default function AdminPage() {
     return sorted;
   }, [filteredSongData, sortColumn, sortDirection]);
 
-  // Paginate sorted songs
   const paginatedSongData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return sortedSongData.slice(startIndex, startIndex + pageSize);
   }, [sortedSongData, currentPage, pageSize]);
 
-  // Add song mutation (with file upload)
   const addSongMutation = useMutation({
     mutationFn: async ({ data, file }: { data: SongFormData; file: File }) => {
       const formData = new FormData();
@@ -217,7 +207,6 @@ export default function AdminPage() {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all song-related queries including filter data
       queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs/all-for-filters"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs/fallback"] });
@@ -237,13 +226,11 @@ export default function AdminPage() {
     },
   });
 
-  // Edit song mutation
   const editSongMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: SongFormData }) => {
       return await apiRequest("PATCH", `/api/songs/${id}`, data);
     },
     onSuccess: () => {
-      // Invalidate all song-related queries including filter data
       queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs/all-for-filters"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs/fallback"] });
@@ -261,13 +248,11 @@ export default function AdminPage() {
     },
   });
 
-  // Delete song mutation
   const deleteSongMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/songs/${id}`);
     },
     onSuccess: () => {
-      // Invalidate all song-related queries including filter data
       queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs/all-for-filters"] });
       queryClient.invalidateQueries({ queryKey: ["/api/songs/fallback"] });
@@ -286,7 +271,6 @@ export default function AdminPage() {
     },
   });
 
-  // Song handlers
   const handleView = (id: string) => {
     const song = songs.find(s => s.id === id);
     const songFiles = files.filter(f => f.songId === id);
@@ -311,7 +295,6 @@ export default function AdminPage() {
   };
 
   const handleSongSubmit = async (data: SongFormData, file?: File) => {
-    // Convert Chinese commas to English commas in tags
     if (data.tags && Array.isArray(data.tags)) {
       data.tags = data.tags.map(tag => tag.replace(/，/g, ','));
     }
@@ -337,7 +320,6 @@ export default function AdminPage() {
     }
   };
 
-  // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/users", data);
@@ -359,7 +341,6 @@ export default function AdminPage() {
     },
   });
 
-  // Edit user mutation
   const editUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       return await apiRequest("PATCH", `/api/users/${id}`, data);
@@ -381,7 +362,6 @@ export default function AdminPage() {
     },
   });
 
-  // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/users/${id}`);
@@ -402,7 +382,6 @@ export default function AdminPage() {
     },
   });
 
-  // Toggle admin mutation
   const toggleAdminMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: string }) => {
       return await apiRequest("PATCH", `/api/users/${id}/role`, { role });
@@ -423,7 +402,6 @@ export default function AdminPage() {
     },
   });
 
-  // User management handlers
   const handleEditUser = (id: string) => {
     const user = users.find(u => u.id === id);
     if (user) {
@@ -462,17 +440,13 @@ export default function AdminPage() {
     editUserMutation.mutate({ id, data });
   };
 
-  // Sorting and pagination handlers
   const handleSort = (column: string) => {
     if (sortColumn === column) {
-      // Toggle direction if same column
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
-      // New column, default to ascending
       setSortColumn(column);
       setSortDirection('asc');
     }
-    // Reset to page 1 when sorting changes
     setCurrentPage(1);
   };
 
@@ -480,7 +454,6 @@ export default function AdminPage() {
     setCurrentPage(page);
   };
 
-  // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [adminSongSearch]);
@@ -492,7 +465,6 @@ export default function AdminPage() {
           <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">後台管理</h1>
           <p className="text-muted-foreground text-lg">管理詩歌庫存、使用者帳號與系統設定</p>
           
-          {/* Sync status warning if paused or in cooldown */}
           {syncStatus && syncStatus.initialized && (
             <>
               {syncStatus.isPaused && (
@@ -515,17 +487,15 @@ export default function AdminPage() {
             </>
           )}
         </div>
-        {user && (
-          <Button
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-            data-testid="button-sync-drive"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-            {syncMutation.isPending ? '同步中...' : '同步 Google Drive'}
-          </Button>
-        )}
+        <Button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+          data-testid="button-sync-drive"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+          {syncMutation.isPending ? '同步中...' : '同步 Google Drive'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -607,8 +577,7 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {user ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-muted/50 p-1 rounded-xl">
             <TabsTrigger value="songs" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-songs">
               <Music className="h-4 w-4 mr-2" />
@@ -657,7 +626,7 @@ export default function AdminPage() {
                   disabled={aiGenerateTagsMutation.isPending}
                   className="border-border/50"
                   data-testid="button-ai-generate-tags"
-                  title="使用 AI 生成標籤（需要 Replit 積分）"
+                  title="使用 AI 生成標籤（需要 Gemini API Key）"
                 >
                   <Tags className={`h-4 w-4 mr-2 ${aiGenerateTagsMutation.isPending ? 'animate-pulse' : ''}`} />
                   {aiGenerateTagsMutation.isPending ? 'AI 生成中...' : 'AI 生成標籤'}
@@ -673,7 +642,6 @@ export default function AdminPage() {
               </div>
             </div>
             
-            {/* Admin Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -739,32 +707,15 @@ export default function AdminPage() {
                 email: user.email || "",
                 role: user.role === "admin" ? "admin" : "user",
                 avatar: user.profileImageUrl || undefined,
-                uploadCount: 0, // TODO: calculate from songs
-                lastActive: undefined, // TODO: track last activity
+                uploadCount: 0,
+                lastActive: undefined,
               }))}
               onEdit={handleEditUser}
               onDelete={handleDeleteUser}
               onToggleAdmin={handleToggleAdmin}
             />
           </TabsContent>
-        </Tabs>
-      ) : (
-        <Card className="border-2">
-          <CardContent className="pt-12 pb-12 text-center space-y-4">
-            <LogIn className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <h2 className="text-xl font-semibold mb-2">需要登入</h2>
-              <p className="text-muted-foreground mb-4">
-                請登入帳號以存取後台管理功能
-              </p>
-            </div>
-            <Button onClick={() => window.location.href = "/login"} data-testid="button-login-admin">
-              <LogIn className="h-4 w-4 mr-2" />
-              前往登入
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      </Tabs>
 
       <AddEditSongDialog
         open={songDialogOpen}
