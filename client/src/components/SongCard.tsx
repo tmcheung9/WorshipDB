@@ -40,26 +40,30 @@ export function SongCard({
   canEdit = false,
 }: SongCardProps) {
   return (
-    <Card className="overflow-hidden hover-elevate active-elevate-2 transition-all duration-200 group" data-testid={`card-song-${title}`}>
-      <div className="aspect-[3/4] bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center relative overflow-hidden">
+    <Card
+      className="group transition-all duration-300 hover-elevate active-elevate-2 animate-fade-in hover:border-primary/30 hover:shadow-md"
+      data-testid={`card-song-${title}`}
+    >
+      <div className="aspect-[3/4] bg-gradient-to-br from-muted/40 to-primary/5 flex items-center justify-center relative overflow-hidden rounded-t-lg group-hover:from-primary/8 group-hover:to-primary/12 transition-colors duration-500">
         {thumbnailUrl ? (
           thumbnailType === 'pdf' ? (
             <PDFThumbnail
               fileUrl={thumbnailUrl}
               alt={title}
-              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+              className="w-full h-full object-contain transition-transform duration-500 ease-out group-hover:scale-[1.02]"
             />
           ) : (
             <img
               src={thumbnailUrl}
               alt={title}
-              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+              className="w-full h-full object-contain transition-transform duration-500 ease-out group-hover:scale-[1.02]"
             />
           )
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <Music className="h-14 w-14 text-muted-foreground/60" />
-            <span className="text-xs text-muted-foreground/50">無預覽圖</span>
+            <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center">
+              <Music className="h-7 w-7 text-muted-foreground/40" />
+            </div>
           </div>
         )}
         {onSelect && (
@@ -67,7 +71,7 @@ export function SongCard({
             <Checkbox
               checked={selected}
               onCheckedChange={onSelect}
-              className="bg-background/90 backdrop-blur-sm border-2 shadow-sm"
+              className="bg-card/90 backdrop-blur-sm border shadow-sm"
               data-testid={`checkbox-select-${title}`}
             />
           </div>
@@ -75,52 +79,51 @@ export function SongCard({
         {versions > 1 && (
           <Badge
             variant="secondary"
-            className="absolute top-3 right-3 shadow-sm backdrop-blur-sm bg-secondary/90"
+            className="absolute top-3 right-3 shadow-sm text-xs"
             data-testid={`badge-versions-${versions}`}
           >
             {versions} 個版本
           </Badge>
         )}
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card/80 to-transparent pointer-events-none" />
       </div>
-      <CardContent className="p-4 space-y-3">
-        <h3 className="font-semibold text-base leading-tight line-clamp-2 text-foreground" data-testid="text-song-title">
+
+      <CardContent className="p-3.5 space-y-2">
+        <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground" data-testid="text-song-title">
           {title}
         </h3>
-        <div className="space-y-1.5 text-sm">
-          <p className="line-clamp-1 flex items-center gap-1.5" data-testid="text-category">
-            <span className="text-muted-foreground">分類：</span>
-            <span className="font-medium text-foreground/80">{category || '未分類'}</span>
+        <div className="space-y-1 text-xs">
+          <p className="line-clamp-1 text-muted-foreground" data-testid="text-category">
+            {category || '未分類'}
           </p>
-          <p className="line-clamp-1 flex items-center gap-1.5" data-testid="text-band-album">
-            <span className="text-muted-foreground">樂團：</span>
-            <span className="font-medium text-foreground/80">{bandAlbum || '未提供'}</span>
+          <p className="line-clamp-1 text-muted-foreground/70" data-testid="text-band-album">
+            {bandAlbum || '未提供'}
           </p>
           {tags && tags.length > 0 ? (
-            <div className="flex flex-wrap gap-1 pt-1" data-testid="text-tags">
+            <div className="flex flex-wrap gap-1 pt-0.5" data-testid="text-tags">
               {tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">
+                <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
                   {tag}
                 </Badge>
               ))}
               {tags.length > 3 && (
-                <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>
+                <span className="text-[10px] text-muted-foreground/50">+{tags.length - 3}</span>
               )}
             </div>
           ) : (
-            <p className="text-muted-foreground/60 text-xs pt-1" data-testid="text-tags">暫無標籤</p>
+            <p className="text-muted-foreground/40 text-[10px] pt-0.5" data-testid="text-tags">暫無標籤</p>
           )}
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex gap-2 flex-wrap">
+
+      <CardFooter className="p-3.5 pt-0 flex gap-1.5 flex-wrap">
         <Button
           variant="default"
           size="sm"
-          className="flex-1 shadow-sm"
+          className="flex-1"
           onClick={onView}
           data-testid="button-view-song"
         >
-          <Eye className="h-4 w-4 mr-1.5" />
+          <Eye className="h-3.5 w-3.5 mr-1" />
           檢視
         </Button>
         {canEdit && (
@@ -131,7 +134,7 @@ export function SongCard({
             onClick={onEdit}
             data-testid="button-edit-song"
           >
-            <Edit className="h-4 w-4 mr-1.5" />
+            <Edit className="h-3.5 w-3.5 mr-1" />
             編輯
           </Button>
         )}
@@ -143,7 +146,7 @@ export function SongCard({
             onClick={onDownload}
             data-testid="button-download-song"
           >
-            <Download className="h-4 w-4 mr-1.5" />
+            <Download className="h-3.5 w-3.5 mr-1" />
             下載
           </Button>
         )}

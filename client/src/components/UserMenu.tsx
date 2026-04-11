@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, Settings, User } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface UserMenuProps {
   user?: {
@@ -25,9 +26,23 @@ export interface UserMenuProps {
 export function UserMenu({ user, onLogin, onLogout, onProfile, onSettings }: UserMenuProps) {
   if (!user) {
     return (
-      <Button onClick={onLogin} data-testid="button-login">
-        登入
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={onLogin}
+            className="rounded-full h-8 w-8 border-border/60"
+            data-testid="button-login"
+            aria-label="管理員登入"
+          >
+            <User className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <p>管理員登入</p>
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -41,18 +56,18 @@ export function UserMenu({ user, onLogin, onLogout, onProfile, onSettings }: Use
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-9 w-9 rounded-full" data-testid="button-user-menu">
-          <Avatar className="h-9 w-9">
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full" data-testid="button-user-menu">
+          <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none" data-testid="text-user-name">{user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground" data-testid="text-user-email">
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-medium" data-testid="text-user-name">{user.name}</p>
+            <p className="text-xs text-muted-foreground" data-testid="text-user-email">
               {user.email}
             </p>
           </div>

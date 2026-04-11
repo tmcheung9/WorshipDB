@@ -18,7 +18,6 @@ import UploadPage from "@/pages/UploadPage";
 import AdminPage from "@/pages/AdminPage";
 import LoginPage from "@/pages/LoginPage";
 import NotFound from "@/pages/not-found";
-import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import type { User } from "@shared/schema";
 
 function Router() {
@@ -26,16 +25,8 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/login" component={LoginPage} />
-      <Route path="/upload">
-        <ProtectedRoute>
-          <UploadPage />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin">
-        <AdminRoute>
-          <AdminPage />
-        </AdminRoute>
-      </Route>
+      <Route path="/upload" component={UploadPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -183,91 +174,90 @@ function AppContent() {
   return (
     <ThemeProvider>
       <div className="flex flex-col min-h-screen w-full">
-        <header className="sticky top-0 z-10 h-16 flex items-center justify-between px-4 sm:px-6 border-b border-border/50 bg-gradient-to-r from-background via-background to-background/95 backdrop-blur-md shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary/20 blur-md rounded-lg" />
-                <div className="relative p-1.5 rounded-lg bg-gradient-to-br from-primary/90 to-primary/70">
-                  <svg className="h-5 w-5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                  </svg>
+        <header className="sticky top-0 z-50 glass border-b border-border/40" data-testid="app-header">
+          <div className="flex items-center justify-between h-12 px-4 sm:px-5">
+            <div className="flex items-center gap-3">
+              <Link href="/">
+                <div className="flex items-center gap-2 cursor-pointer" data-testid="link-logo">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                  </div>
+                  <span className="text-[11px] font-bold tracking-[0.15em] text-foreground uppercase hidden sm:block">
+                    WORSHIPDB LIBRARY
+                  </span>
                 </div>
-              </div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent hidden sm:block">
-                詩歌歌曲庫
-              </h1>
+              </Link>
+
+              {location !== "/login" && (
+                <nav className="flex items-center gap-0.5 ml-2">
+                  {visibleNavItems.map((item) => (
+                    <Tooltip key={item.path}>
+                      <TooltipTrigger asChild>
+                        <Link href={item.path}>
+                          <Button
+                            variant={location === item.path ? "secondary" : "ghost"}
+                            size="sm"
+                            className={`gap-1.5 transition-all duration-200 ${
+                              location === item.path ? 'font-medium' : ''
+                            }`}
+                            data-testid={`nav-${item.path === "/" ? "home" : item.path.slice(1)}`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span className="hidden lg:inline text-sm">{item.label}</span>
+                          </Button>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        <p>{item.tooltip}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </nav>
+              )}
             </div>
 
-            {location !== "/login" && (
-              <nav className="flex items-center gap-1 ml-2">
-                {visibleNavItems.map((item) => (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>
-                      <Link href={item.path}>
-                        <Button
-                          variant={location === item.path ? "default" : "ghost"}
-                          size="sm"
-                          className={`gap-2 transition-all ${
-                            location === item.path
-                              ? 'shadow-md'
-                              : 'hover:bg-muted/80'
-                          }`}
-                          data-testid={`nav-${item.path === "/" ? "home" : item.path.slice(1)}`}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span className="hidden lg:inline text-sm">{item.label}</span>
-                        </Button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      <p>{item.tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </nav>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            {user && syncStatus && syncStatus.lastSuccess && (
-              <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-                <span>上次同步：{new Date(syncStatus.lastSuccess).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            )}
-            {user && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => syncMutation.mutate()}
-                    disabled={syncMutation.isPending}
-                    data-testid="button-sync-header"
-                    className="hidden sm:flex"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                    <span className="hidden md:inline ml-1.5 text-xs">同步</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  <p>從 Google Drive 同步詩歌庫</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-            <ThemeToggle />
-            {!isLoading && (
-              <UserMenu
-                user={displayUser}
-                onLogin={handleLogin}
-                onLogout={handleLogout}
-                onProfile={handleProfile}
-                onSettings={handleSettings}
-              />
-            )}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {user && syncStatus && syncStatus.lastSuccess && (
+                <span className="hidden md:inline text-xs text-muted-foreground" data-testid="text-sync-status">
+                  {new Date(syncStatus.lastSuccess).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {user && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => syncMutation.mutate()}
+                      disabled={syncMutation.isPending}
+                      data-testid="button-sync-header"
+                      className="hidden sm:flex"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <p>從 Google Drive 同步詩歌庫</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <ThemeToggle />
+              {!isLoading && (
+                <UserMenu
+                  user={displayUser}
+                  onLogin={handleLogin}
+                  onLogout={handleLogout}
+                  onProfile={handleProfile}
+                  onSettings={handleSettings}
+                />
+              )}
+            </div>
           </div>
         </header>
-        <main className="flex-1 overflow-auto bg-background">
+
+        <main className="flex-1 overflow-auto">
           <Router />
         </main>
         <SiteFooter />

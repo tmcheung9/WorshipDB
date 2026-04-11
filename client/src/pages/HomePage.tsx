@@ -10,7 +10,7 @@ import { EditSongDialog } from "@/components/EditSongDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ChevronDown, ChevronUp, Eye, X, Grid3x3, List, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, X, Grid3x3, List, AlertTriangle, Music } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -489,19 +489,28 @@ export default function HomePage() {
         />
       )}
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Warning banner when catalog is uninitialized */}
+      <div className="relative min-h-full">
+        {/* Blue-purple cloud gradient background — light mode only */}
+        <div className="absolute inset-0 -z-10 dark:hidden pointer-events-none"
+          style={{ background: "linear-gradient(135deg, #e8eaf6 0%, #ede7f6 20%, #e3f2fd 50%, #e8eaf6 80%, #f3e5f5 100%)" }} />
+        <div className="fixed top-0 left-0 w-[500px] h-[400px] -z-10 dark:hidden pointer-events-none"
+          style={{ background: "radial-gradient(circle at 30% 30%, rgba(129,140,248,0.22) 0%, rgba(167,139,250,0.10) 45%, transparent 70%)" }} />
+        <div className="fixed top-[15%] right-0 w-[400px] h-[400px] -z-10 dark:hidden pointer-events-none"
+          style={{ background: "radial-gradient(circle at 70% 30%, rgba(96,165,250,0.18) 0%, rgba(129,140,248,0.08) 45%, transparent 70%)" }} />
+        <div className="fixed bottom-0 left-[25%] w-[600px] h-[300px] -z-10 dark:hidden pointer-events-none"
+          style={{ background: "radial-gradient(circle at 50% 80%, rgba(167,139,250,0.14) 0%, rgba(196,181,253,0.06) 50%, transparent 70%)" }} />
+      <div className="max-w-6xl mx-auto px-4 sm:px-5 py-5 space-y-5">
         {syncStatus && !syncStatus.initialized && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="animate-fade-in">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              詩歌庫正在從 Google Drive 進行首次同步，請稍候。系統會在同步完成後自動更新。
+              詩歌庫正在從 Google Drive 進行首次同步，請稍候。
             </AlertDescription>
           </Alert>
         )}
-        
+
         {syncStatus && syncStatus.initialized && !syncStatus.lastSuccess && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="animate-fade-in">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               詩歌庫尚未完成初始化。請聯絡管理員或稍後再試。
@@ -509,138 +518,127 @@ export default function HomePage() {
           </Alert>
         )}
 
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground" data-testid="text-page-title">
+            詩歌搜尋
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            共 {songs.length} 首詩歌
+            {selectedCategory && selectedCategory !== "all" && ` · ${selectedCategory}`}
+            {(!selectedCategory || selectedCategory === "all") && " · 全部分類"}
+          </p>
+        </div>
+
         {selectedSongs.size > 0 && (
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 border border-primary/20 rounded-xl shadow-sm">
-            <div className="flex items-center gap-3">
-              <Badge variant="default" className="text-base px-3 py-1.5 shadow-sm">
+          <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-lg animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Badge variant="default">
                 {selectedSongs.size}
               </Badge>
-              <span className="font-medium text-foreground">首詩歌已選擇</span>
+              <span className="text-sm font-medium text-foreground">首詩歌已選擇</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <Button
+                size="sm"
                 onClick={handleViewSelected}
-                className="shadow-sm"
                 data-testid="button-view-selected"
               >
-                <Eye className="h-4 w-4 mr-1.5" />
-                檢視選擇的詩歌
+                <Eye className="h-3.5 w-3.5 mr-1" />
+                檢視
               </Button>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleClearSelection}
                 data-testid="button-clear-selection"
               >
-                <X className="h-4 w-4 mr-1.5" />
-                清除選擇
+                <X className="h-3.5 w-3.5 mr-1" />
+                清除
               </Button>
             </div>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <SearchBar value={search} onChange={setSearch} />
 
-        <div>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-full justify-between h-10 bg-card/50 hover:bg-card border-border/50"
-            data-testid="button-toggle-filters"
-          >
-            <span className="text-muted-foreground">{showFilters ? "隱藏" : "顯示"}進階篩選</span>
-            {showFilters ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </Button>
-
-          {showFilters && (
-            <div className="mt-4">
-              <FilterPanel
-                selectedCategory={selectedCategory}
-                selectedBandAlbum={selectedBandAlbum}
-                selectedTags={selectedTags}
-                categories={categories}
-                bandAlbums={bandAlbums}
-                availableTags={allTags}
-                onCategoryChange={setSelectedCategory}
-                onBandAlbumChange={setSelectedBandAlbum}
-                onTagToggle={handleTagToggle}
-                onClearFilters={handleClearFilters}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">
-              搜尋結果
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              共 {songs.length} 首詩歌
-              {selectedCategory && selectedCategory !== "all" && (
-                <span className="ml-2">• 分類：{selectedCategory}</span>
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="text-muted-foreground"
+              data-testid="button-toggle-filters"
+            >
+              {showFilters ? (
+                <ChevronUp className="h-3.5 w-3.5 mr-1" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 mr-1" />
               )}
-              {(!selectedCategory || selectedCategory === "all") && (
-                <span className="ml-2">• 全域搜尋</span>
-              )}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1 border border-border/50 rounded-lg p-1 bg-card/50 shadow-sm">
+              {showFilters ? "隱藏篩選" : "篩選"}
+            </Button>
+
+            <div className="flex gap-0.5 bg-muted/50 rounded-md p-0.5">
               <Button
                 variant={viewMode === "grid" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
-                className="transition-all"
                 data-testid="button-view-grid"
               >
-                <Grid3x3 className="h-4 w-4" />
+                <Grid3x3 className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant={viewMode === "list" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("list")}
-                className="transition-all"
                 data-testid="button-view-list"
               >
-                <List className="h-4 w-4" />
+                <List className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
+
+          {showFilters && (
+            <FilterPanel
+              selectedCategory={selectedCategory}
+              selectedBandAlbum={selectedBandAlbum}
+              selectedTags={selectedTags}
+              categories={categories}
+              bandAlbums={bandAlbums}
+              availableTags={allTags}
+              onCategoryChange={setSelectedCategory}
+              onBandAlbumChange={setSelectedBandAlbum}
+              onTagToggle={handleTagToggle}
+              onClearFilters={handleClearFilters}
+            />
+          )}
         </div>
-        
+
         {isShowingFallback && (
-          <div className="mb-4 p-4 bg-accent/10 border border-accent/20 rounded-xl">
+          <div className="p-3 bg-muted/30 rounded-lg animate-fade-in">
             <p className="text-sm text-muted-foreground">
-              沒有符合搜尋條件「<span className="font-medium text-foreground">{search}</span>」的詩歌。以下顯示
-              {selectedCategory && selectedCategory !== "all" ? `「${selectedCategory}」分類中` : ""}
-              的所有詩歌，您可以瀏覽查找。
+              找不到「<span className="font-medium text-foreground">{search}</span>」，
+              {selectedCategory && selectedCategory !== "all" ? `顯示「${selectedCategory}」中` : "顯示"}
+              所有詩歌。
             </p>
           </div>
         )}
-        
+
         {songsLoading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3" />
-            <span>載入中...</span>
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <div className="w-7 h-7 border-2 border-primary/20 border-t-primary rounded-full animate-spin mb-3" />
+            <span className="text-sm">載入中...</span>
           </div>
         ) : songs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-              <Grid3x3 className="h-8 w-8 text-muted-foreground/50" />
+          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
+              <Music className="h-7 w-7 text-muted-foreground/40" />
             </div>
-            <p className="text-lg font-medium text-foreground mb-1">目前沒有詩歌</p>
-            <p className="text-sm">請在 Google Drive 資料夾中上傳檔案</p>
+            <p className="text-base font-medium text-foreground mb-1">目前沒有詩歌</p>
+            <p className="text-sm text-muted-foreground">請在 Google Drive 資料夾中上傳檔案</p>
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {songs.map((song) => (
               <SongCard
                 key={song.id}
@@ -663,7 +661,7 @@ export default function HomePage() {
             ))}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {songs.map((song) => (
               <SongListItem
                 key={song.id}
@@ -687,7 +685,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-      </div>
 
       {/* Edit Song Dialog */}
       <EditSongDialog
@@ -701,6 +698,7 @@ export default function HomePage() {
         onSubmit={handleEditSubmit}
         isPending={editSongMutation.isPending}
       />
+      </div>
     </>
   );
 }
